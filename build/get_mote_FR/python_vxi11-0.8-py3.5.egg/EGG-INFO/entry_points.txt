@@ -1,3 +1,0 @@
-[console_scripts]
-vxi11-cli = vxi11.cli:main
-

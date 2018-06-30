@@ -1,5 +1,0 @@
-('C:\\Users\\Simon\\Projects\\Bitbucket-Petasense\\Petasense_scripts\\build\\get_mote_FR\\python_vxi11-0.8-py3.5.egg',
- None,
- {'*.so', '*.pyd', '*.py', '*.pyc', '*.pyo', 'EGG-INFO'},
- 'DATA',
- [])
