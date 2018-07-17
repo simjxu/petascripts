@@ -24,15 +24,15 @@ def gen_qf0(xdata, ydata):
 file = open("data/P14-VM2.txt", 'r')
 device_ids = file.read().split("\n")
 
-reader = csv.reader(open("data/acc_lsm_x_14.csv", "r"), delimiter=",")
+reader = csv.reader(open("data/acc_832_x_14.csv", "r"), delimiter=",")
 x = list(reader)
 acc__x = np.array(x).astype("float")
 
-reader = csv.reader(open("data/acc_lsm_y_14.csv", "r"), delimiter=",")
+reader = csv.reader(open("data/acc_832_y_14.csv", "r"), delimiter=",")
 x = list(reader)
 acc__y = np.array(x).astype("float")
 
-reader = csv.reader(open("data/acc_lsm_z_14.csv", "r"), delimiter=",")
+reader = csv.reader(open("data/acc_832_z_14.csv", "r"), delimiter=",")
 x = list(reader)
 acc__z = np.array(x).astype("float")
 
@@ -196,7 +196,7 @@ for i in argmax_z:
     i = np.int(i)
 
 
-transposed = np.transpose(acc__z)
+transposed = np.transpose(acc__x)
 
 plt.plot(transposed)
 # plt.ylim(0,2)

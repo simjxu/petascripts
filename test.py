@@ -14,13 +14,14 @@ datapoints = [float(i) for i in pts]
 # plt.plot(datapoints)
 # plt.show()
 
+print("RMS:", np.sqrt(np.mean(np.square(datapoints))))
 freq = [100 * (i+1) for i in range(15)]
 reference_value = [0.0 for i in range(15)]
 for i in range(1):
     extract_data = datapoints
     num_samples = len(extract_data)
 
-    sampling_rate = 6912
+    sampling_rate = 6664
 
     xf = np.linspace(0.0, sampling_rate / 2, num_samples // 2)
     _, yf = welch(

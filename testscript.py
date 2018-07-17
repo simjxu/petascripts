@@ -100,8 +100,6 @@ def plot_response(values, sampling_rate, nSamples):
         stop = int((freqarr[i] + 30) / bin_size)
         reference_values[i] = max(yf[start:stop])
 
-    print("max peak:", np.max(yf))
-
     print(reference_values)
     plt.plot(xf, yf)
     plt.show()
@@ -137,24 +135,13 @@ else:
 sampling_rate = c_double(20000)
 nSamples = 20000
 time.sleep(2)
-values = acquire_samples(dev0, c_int(0), sampling_rate, nSamples)
+values1 = acquire_samples(dev0, c_int(0), sampling_rate, nSamples)
 values2 = acquire_samples(dev0, c_int(1), sampling_rate, nSamples)
 
 
-for i in range(len(values)):
-    # values[i] = values[i]/0.059749
-    values[i] = values[i]/0.01033
+for i in range(len(values1)):
+    values1[i] = values[i]/0.059749
     values2[i] = values2[i]/0.059289         # used to be 0.05166  0.059289   SS: 0.04867
 
-plot_response(values, sampling_rate, nSamples)
-# plot_response(values2, sampling_rate, nSamples)
-
-# Zval = [0.57, 0.95, 0.9, 0.9, 0.65, 0.49, 0.51, 0.42, 0.44, 0.97, 0.66, 0.72, 0.8, 0.81, 1.16]
-# newval = [0.5592703247269647, 0.95487620082305358, 0.89092940278817589, 0.92037696058224105, 0.66861508060960884, 0.52253411176432263, 0.56069145157158962, 0.48244009241912056, 0.51498871510448441, 1.1024332095606051, 0.75774679250775634, 0.85645002314836338, 1.1178021322937142, 1.1711074895224816, 1.7154831066303717]
-#
-# ratio = [0.0 for i in range(len(freqarr))]
-# for i in range(len(freqarr)):
-#     ratio[i] = Zval[i]/newval[i]
-#
-# plt.plot(xf, yf)
-# plt.show()
+plot_response(values1, sampling_rate, nSamples)
+plot_response(values2, sampling_rate, nSamples)

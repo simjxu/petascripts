@@ -27,36 +27,14 @@ def custom_waveform(freqarr, shiftarr, amplitude, simulated_sampling_rate, time_
     rgdSamples = (c_double * simulated_num_samples)()
     # For a 100-1500Hz section, e.g., each cycle will be time_length seconds long
     # Sample rate = frequency * number of samples
-    print(len(rgdSamples))
     for t in range(simulated_num_samples):
         sumfreq = 0
-        for j in range(len(freqarr)):
+        for j in range(len(shiftarr)):
             sumfreq += amplitude * sin(2 * pi * freqarr[j] * t / simulated_sampling_rate + shiftarr[j])
         rgdSamples[t] = sumfreq
-
-    # t = [i / simulated_sampling_rate for i in range(simulated_num_samples)]
-    # plt.plot(t, rgdSamples)
-    # plt.show()
-    #
-    # longersample = [0.0 for i in range(len(rgdSamples))]
-    # for i in range(len(longersample)):
-    #     longersample[i] = rgdSamples[i]
-    # xf = np.linspace(0.0, simulated_sampling_rate / 2, len(longersample) // 2)
-    # _, yf = welch(
-    #     longersample,
-    #     simulated_sampling_rate,
-    #     nperseg=len(longersample),
-    #     noverlap=0,
-    #     window='flattop',
-    #     scaling='spectrum'
-    # )
-    # yf = np.sqrt(2 * yf) * len(yf)
-    # yf = yf[:len(xf)]
-    # yf = 2.0 / len(longersample) * np.abs(yf)
-    #
-    # plt.plot(xf, yf)
-    # plt.show()
-
+        # t = [i/simulated_sampling_rate for i in range(simulated_num_samples)]
+        # plt.plot(t, rgdSamples)
+        # plt.show()
     return rgdSamples
 def generate_samples(device, channel, rgdSamples, time_length):
     dwf.FDwfAnalogOutNodeEnableSet(device, channel, AnalogOutNodeCarrier, c_bool(True))
@@ -71,10 +49,10 @@ def acquire_samples(device, channel, sampling_rate, nSamples):
     sts = c_byte(); rgpy = [0.0] * nSamples
     # set up acquisition for device 0 channel 0
     dwf.FDwfAnalogInChannelEnableSet(device, channel, c_bool(True))      # Enable Analog in channel
-    dwf.FDwfAnalogInChannelRangeSet(device, channel, c_double(0.1))      # Configure channel range
+    dwf.FDwfAnalogInChannelRangeSet(device, channel, c_double(1.0))      # Configure channel range
     dwf.FDwfAnalogInAcquisitionModeSet(device, acqmodeRecord)            # Perform acquisition for length of time RecordLengthSet
     dwf.FDwfAnalogInFrequencySet(device, sampling_rate)                          # Set sample rate of device
-    dwf.FDwfAnalogInChannelOffsetSet(device, channel, c_double(0.0))     # Configure offset for channel
+    dwf.FDwfAnalogInChannelOffsetSet(device, channel, c_double(0.1))     # Configure offset for channel
     # Define RecordLengthSet
     dwf.FDwfAnalogInRecordLengthSet(device, c_double(float(nSamples) / sampling_rate.value))
     dwf.FDwfAnalogInConfigure(device, c_bool(True), c_bool(True))
@@ -109,16 +87,13 @@ def acquire_samples(device, channel, sampling_rate, nSamples):
     # Save the values
     for i in range(0, nSamples):
         rgpy[i] = tmpSamples[i]
-    # dwf.FDwfAnalogInConfigure(device, c_bool(False), c_bool(False))
-    # dwf.FDwfAnalogInChannelEnableSet(device, channel, c_bool(False))
+
+    voltsrange = c_double(0)
+    dwf.FDwfAnalogInChannelRangeGet(device, channel, byref(voltsrange))
+    print("Range:", voltsrange.value)
     return rgpy
 # ------------ END acquire_samples() -------------------------------------------------------
 def get_reference_values(collected_samples, freqarr, sampling_rate, num_samples, axis):
-
-    # Plot the waveform
-    plt.plot(collected_samples)
-    plt.show()
-
     # Calculate spectrum
     xf = np.linspace(0.0, sampling_rate / 2, num_samples // 2)
     _, yf = welch(
@@ -132,22 +107,25 @@ def get_reference_values(collected_samples, freqarr, sampling_rate, num_samples,
     yf = np.sqrt(2 * yf) * len(yf)
     yf = yf[:len(xf)]
     yf = 2.0 / num_samples * np.abs(yf)
-
-    # Plot the spectrum
-    plt.plot(xf, yf)
-    plt.show()
-
     # Determine the maximum at each frequency in frequency array
     reference_values = [0.0 for i in range(len(freqarr))]
     # reference_values = dict()
     bin_size = sampling_rate / num_samples
+
+    # # Print rms
+    # plt.plot(collected_samples)
+    # plt.show()
+    print(axis, "RMS:", np.sqrt(np.mean(np.square(collected_samples)))/0.051660)
+
     # Divide by Reference 832M1 Sensitivities -----
     if axis == 1:
         volt = 0.049382
     elif axis == 2:
         volt = 0.049076
     else:
-        volt = 0.051660
+        volt = 0.059289
+        # volt = 0.051660
+        # volt = 0.00982
     for i in range(len(freqarr)):
         start = int((freqarr[i] - 30) / bin_size)
         stop = int((freqarr[i] + 30) / bin_size)
@@ -160,27 +138,26 @@ def get_reference_values(collected_samples, freqarr, sampling_rate, num_samples,
 @route('/calibrate/<sensor>/<frequency:int>')
 def calibrate_at_frequency(sensor, frequency):
     if sensor == "LSM6DS3":
-        sampling_rate = c_double(20000)
-        nSamples = 16384
+        # sampling_rate = c_double(6664)
+        # nSamples = 8192
+        sampling_rate = c_double(25000)
+        nSamples = 25000
     elif sensor == "832M1":
         sampling_rate = c_double(20000)
         nSamples = 16384
     else:
         resp = {"message": "Sensor name entered incorrectly"}
         return dumps(resp)
-    shiftarr1500 = [1.31,-0.685,0.41,0.5,0.2,0.14,0.3,-0.605,0.66,-0.91,0.015,3.24,-1.06,2.315,0.25]
+    shiftarr1500 = [2.8300, 3.0000, 0.6700, -0.0410, 2.9730, 4.1420, -0.0480, -0.2870, 2.9900, 0.1500,
+                    2.7410, 1.8300, 1.3550, 0.9900, 1.4100]
     shiftarr3000 = [3.0600, 3.5100, 1.0250, -0.1510, 2.6330, 4.0420, 0.0820, -0.2070, 2.9800, 0.2200,
                     2.7100, 2.1300, 1.6100, 1.7300, 1.6600]
     shiftarr4000 = [2.7500, 2.1000, 1.0800, 1.0900, 1.7600, 3.6200, -1.7500, 0.6400, 4.0300, 0.9200]
     shiftarr5000 = [3.5900, 1.5600, 1.2000, 1.8000, 1.4600, 3.3300, -1.2000, 1.3900, 3.9500, 0.2100]
     shiftarr6000 = [3.5500, 3.3600, 1.6200, -1.1100, 1.3700, 0.7800, 1.4700, 3.5700, 0.9100, 1.1500]
-
     if frequency <= 1500:
-        shiftarr = shiftarr1500; amp = 0.15; freqstring = "100-1500Hz"
-        # freqarr = [113, 198, 295, 423, 510, 625, 710, 815, 950, 1050, 1100, 1215, 1310, 1445, 1500]
-        # freqarr = [113, 198, 295]
-        freqarr = [198]
-
+        shiftarr = shiftarr1500; amp = 0.2; freqstring = "100-1500Hz"
+        freqarr = [100 * (i + 1) + 0 for i in range(len(shiftarr1500))]
     elif 1500 < frequency <= 3000:
         shiftarr = shiftarr3000; amp = 0.2; freqstring = "1600-3000Hz"
         freqarr = [100 * (i + 1) + 1500 for i in range(len(shiftarr1500))]
@@ -198,19 +175,19 @@ def calibrate_at_frequency(sensor, frequency):
         return dumps(resp)
     # BEGIN SIGNAL GEN -----------------------------------------------
     print("Generating signal...")
-    rgdSamples = custom_waveform(freqarr, shiftarr, amplitude=amp, simulated_sampling_rate=10000, time_length=1)
-    generate_samples(dev0, c_int(0), rgdSamples, time_length=1)
+    rgdSamples = custom_waveform(freqarr, shiftarr, amplitude=amp, simulated_sampling_rate=100000, time_length=0.01)
+    generate_samples(dev0, c_int(0), rgdSamples, time_length=0.01)
     # BEGIN ACQUISITION ----------------------------------------------
     print("Acquiring data...")
     dwf.FDwfAnalogInConfigure(dev0, c_bool(True), c_bool(True))  # Configures devices to be on
-    dwf.FDwfAnalogInConfigure(dev1, c_bool(True), c_bool(True))
+    # dwf.FDwfAnalogInConfigure(dev1, c_bool(True), c_bool(True))
     time.sleep(1)  # Wait for signal to settle...
     # Acquire samples, Device 0 Channel 0
     dev0chan0_values = acquire_samples(dev0, c_int(0), sampling_rate, nSamples)
     # Acquire samples, Device 0 Channel 1
     dev0chan1_values = acquire_samples(dev0, c_int(1), sampling_rate, nSamples)
     # Acquire samples, Device 1 Channel 0
-    dev1chan0_values = acquire_samples(dev1, c_int(0), sampling_rate, nSamples)
+    dev1chan0_values = acquire_samples(dev0, c_int(1), sampling_rate, nSamples)
 
     # GET REFERENCE VAL ----------------------------------------------
     print("Getting reference values...")
@@ -275,18 +252,16 @@ for i in range(0, cdevices.value):
     print(str(serialnum.value))
     dwf.FDwfEnumDeviceIsOpened(c_int(i), byref(IsInUse))
     # Define device by serial number
-    if str(serialnum.value) == "b'SN:210321A67C47'":
-        dwf.FDwfDeviceOpen(c_int(i), byref(dev0))
-    if str(serialnum.value) == "b'SN:210321A678D7'":
-        dwf.FDwfDeviceOpen(c_int(i), byref(dev1))
+    dwf.FDwfDeviceOpen(c_int(i), byref(dev0))
+
 print("------------------------------")
 # Device 0: outputting signal from Device
 if dev0.value == hdwfNone.value:
     print("failed to open 1st device")
     quit()
-elif dev1.value == hdwfNone.value:
-    print("failed to open 2nd device")
-    quit()
+# elif dev1.value == hdwfNone.value:
+#     print("failed to open 2nd device")
+#     quit()
 else:
     print("Device Connected! Waiting for signal...")
 # RUN BOTTLE SCRIPT ================================================
