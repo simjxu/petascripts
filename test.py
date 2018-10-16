@@ -4,7 +4,7 @@ import json
 import numpy as np
 from scipy.signal import welch
 import matplotlib.pyplot as plt
-
+import scipy.io as sio
 
 file = open('data.txt', 'r')
 pts = file.read().split("\n")

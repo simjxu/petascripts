@@ -10,8 +10,8 @@ def func(w, q, f0):
 
     return np.sqrt(num / den)
 
-Q = 0.903
-f0 = 1534.397
+Q = 0.7
+f0 = 1700
 
 freqarr = [100.0*(i+1) for i in range(15)]
 curve = [0.0 for i in range(15)]
